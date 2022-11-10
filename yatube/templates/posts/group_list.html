@@ -4,22 +4,11 @@
   Последние посты группы {{ posts.group }}
 {% endblock %}
 {% block content %}
- {% include 'includes/header.html' %}
   <h1>{{ group.title }}</h1>
   <h1>Последние посты группы {{ posts.group }}</h1>
   <p>{{ group.description }}</p>
     {% for post in page_obj %}
-      <article>
-        <ul>
-          <li>
-            Автор: {{ post.author.get_full_name }}
-          </li>
-          <li>
-            Дата публикации: {{ post.pub_date|date:"d E Y" }}
-          </li>
-        </ul>
-        <p>{{ post.text|linebreaksbr }}</p>
-      </article>
+      {% include 'posts/includes/post_card.html' with show_group_link=False show_detail=True %}
       {% if not forloop.last %}<hr>{% endif %}
     {% endfor %}
   {% include 'posts/includes/paginator.html' %}
