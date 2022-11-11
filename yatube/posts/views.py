@@ -1,7 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
-
-from yatube.settings import POSTS_VIEWED
+from django.conf import settings
 
 from .forms import PostForm
 from .models import Group, Post, User
@@ -13,7 +12,7 @@ def index(request):
         'group',
         'author'
     )
-    page_obj = paginate(request, post_list, POSTS_VIEWED)
+    page_obj = paginate(request, post_list, settings.POSTS_VIEWED)
     context = {
         'page_obj': page_obj,
     }
@@ -23,7 +22,7 @@ def index(request):
 def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
     post_list = group.posts.select_related('author')
-    page_obj = paginate(request, post_list, POSTS_VIEWED)
+    page_obj = paginate(request, post_list, settings.POSTS_VIEWED)
     context = {
         'group': group,
         'page_obj': page_obj,
@@ -34,7 +33,7 @@ def group_posts(request, slug):
 def profile(request, username):
     author = get_object_or_404(User, username=username)
     posts = author.posts.all()
-    page_obj = paginate(request, posts, POSTS_VIEWED)
+    page_obj = paginate(request, posts, settings.POSTS_VIEWED)
     context = {
         'page_obj': page_obj,
         'author': author,
@@ -65,7 +64,7 @@ def post_create(request):
 
 @login_required
 def post_edit(request, post_id):
-    edited_post = Post.objects.get(id=post_id)
+    edited_post = get_object_or_404(Post, id=post_id)
     if not request.user == edited_post.author:
         return redirect('posts:post_detail', post_id)
     form = PostForm(request.POST or None, instance=edited_post)

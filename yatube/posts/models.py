@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import models
-
-from yatube.settings import POST_CHARS_VIEWED
+from django.conf import settings
 
 
 User = get_user_model()
@@ -36,4 +35,4 @@ class Post(models.Model):
         ordering = ['-pub_date']
 
     def __str__(self) -> str:
-        return self.text[:POST_CHARS_VIEWED]
+        return self.text[:settings.POST_CHARS_VIEWED]
