@@ -3,6 +3,8 @@ import os
 
 POSTS_VIEWED = 10
 
+POST_CHARS_VIEWED = 200
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SECRET_KEY = 'lcgy06%6)qtf8n5vzfetazxhubev@=%lgxi7^)=5&6jegv!r$k'

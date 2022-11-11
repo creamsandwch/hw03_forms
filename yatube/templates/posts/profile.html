@@ -5,7 +5,7 @@
     <h1>Все посты пользователя {{ author.username }} </h1>
     <h3>Всего постов: {{ author.posts.count }} </h3>
     {% for post in page_obj %}   
-    {% include 'posts/includes/post_card.html' with show_detail=True show_group_link=True %}
+    {% include 'posts/includes/post_card.html' with show_group_link=True %}
     {% if not forloop.last %}<hr>{% endif %}
     {% endfor %}
     {% include 'posts/includes/paginator.html' %} 

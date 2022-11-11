@@ -1,8 +1,15 @@
 <article>
     <ul>
+      {% with request.resolver_match.url_name as view_name %}
+      {% if view_name != 'profile' %}
       <li>
-        Автор: {{ post.author.get_full_name }}
+        Автор: {{ post.author.get_full_name }}.
+        <a href={% url 'posts:profile' post.author.username %}>
+          Все посты автора
+        </a>
       </li>
+      {% endif %}
+      {% endwith  %}
       <li>
         Дата публикации: {{ post.pub_date|date:"d E Y" }}
       </li>
@@ -11,9 +18,7 @@
     {% if post.group and show_group_link %}
       <a class="btn btn-outline-secondary" href="{% url 'posts:group_list' post.group.slug %}">Все записи группы</a>
     {% endif %}
-    {% if show_detail %}
       <a class="btn btn-outline-secondary" href="{% url 'posts:post_detail' post.id %}">Подробная информация </a>
-    {% endif %}
     {% if post.author == request.user %}
       <a class="btn btn-outline-secondary" href="{% url 'posts:post_edit' post.id %}">Редактировать</a>
     {% endif %}
