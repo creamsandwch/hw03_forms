@@ -3,7 +3,7 @@ import os
 
 POSTS_VIEWED = 10
 
-POST_CHARS_VIEWED = 200
+POST_CHARS_VIEWED = 15
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
