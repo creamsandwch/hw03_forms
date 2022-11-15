@@ -25,14 +25,17 @@ class StaticURLTests(TestCase):
         )
 
     def test_homepage(self):
+        """Проверяем доступность главной страницы (smoke test)."""
         response = self.guest_client.get('/')
         self.assertEqual(response.status_code, 200)
 
     def test_non_existent_page(self):
+        """Проверяем недоступность несуществующей страницы."""
         response = self.guest_client.get('/unexisting_page/')
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_urls_exist_at_desired_location(self):
+        """Проверяем доступность всех остальных url-адресов."""
         urls = [
             '/',
             '/group/test-slug/',
@@ -45,6 +48,8 @@ class StaticURLTests(TestCase):
                 self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_urls_templates_used(self):
+        """Проверяем, верный ли шаблон используется при обращении по
+        соответствующему адресу."""
         urls_templates = {
             '/': 'posts/index.html',
             '/group/test-slug/': 'posts/group_list.html',
