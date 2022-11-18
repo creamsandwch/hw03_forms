@@ -14,20 +14,19 @@ class PostViewsTest(TestCase):
         cls.author = User.objects.create_user(username='TestUser')
         cls.authorized_client = Client()
         cls.authorized_client.force_login(cls.author)
-        cls.group = Group.objects.create(
-            title='Тестовое название группы',
-            slug='test-slug',
+        cls.group_1 = Group.objects.create(
+            title='Первая тестовая группа',
+            slug='test-slug-1',
         )
-        cls.post_list = []
-        for i in range(1, 14):
-            cls.post_list.append(
-                Post.objects.create(
-                    text=f'Текст тестового поста #{i}',
-                    author=cls.author,
-                    group=cls.group,
-                    pub_date=timezone.now() - i * timezone.timedelta(hours=1)
-                )
-            )
+        cls.group_2 = Group.objects.create(
+            title='Вторая тестовая группа',
+            slug='test-slug-2'
+        )
+        cls.test_post = Post.objects.create(
+            text='Тестовый пост',
+            group=cls.group_1,
+            author=cls.author
+        )
 
     def test_views_use_correct_templates(self):
         """Проверяем, что view-функции приложения posts
@@ -36,20 +35,20 @@ class PostViewsTest(TestCase):
             reverse('posts:index'): 'posts/index.html',
             reverse(
                 'posts:group_list',
-                kwargs={'slug': 'test-slug'}
+                kwargs={'slug': PostViewsTest.group_1.slug}
             ): 'posts/group_list.html',
             reverse(
                 'posts:post_detail',
-                kwargs={'post_id': PostViewsTest.post_list[0].id}
+                kwargs={'post_id': PostViewsTest.test_post.id}
             ): 'posts/post_detail.html',
             reverse(
                 'posts:profile',
-                kwargs={'username': PostViewsTest.author.username}
+                kwargs={'username': PostViewsTest.test_post.author.username}
             ): 'posts/profile.html',
             reverse('posts:post_create'): 'posts/create_post.html',
             reverse(
                 'posts:post_edit',
-                kwargs={'post_id': PostViewsTest.post_list[0].id}
+                kwargs={'post_id': PostViewsTest.test_post.id}
             ): 'posts/create_post.html',
         }
         for reverse_name, template in templates_pages_names.items():
@@ -67,7 +66,7 @@ class PostViewsTest(TestCase):
             PostViewsTest.authorized_client.get(
                 reverse(
                     'posts:post_edit',
-                    kwargs={'post_id': PostViewsTest.post_list[0].id}
+                    kwargs={'post_id': PostViewsTest.test_post.id}
                 )
             ),
         ]
@@ -88,52 +87,41 @@ class PostViewsTest(TestCase):
         response = PostViewsTest.authorized_client.post(
             reverse(
                 'posts:post_edit',
-                kwargs={'post_id': PostViewsTest.post_list[0].id}
+                kwargs={'post_id': PostViewsTest.test_post.id}
             )
         )
         form_fields_post = {
-            'text': 'Текст тестового поста #1',
-            'group': PostViewsTest.group,
+            'text': 'Тестовый пост',
+            'group': PostViewsTest.group_1,
             'author': PostViewsTest.author,
         }
         form = response.context.get('form').instance
         for value, expected in form_fields_post.items():
             with self.subTest(value=value):
-                form_instance_field_value = getattr(form, value)
-                self.assertEqual(form_instance_field_value, expected)
+                self.assertEqual(getattr(form, value), expected)
 
     def test_index_shows_correct_context_and_paginator(self):
         """Проверяем, что index view передает правильный
         context шаблону"""
         response = PostViewsTest.guest_client.get(reverse('posts:index'))
         object_list = response.context['page_obj'].object_list
-        first_page_objects_count = len(object_list)
-        response = PostViewsTest.guest_client.get(
-            reverse('posts:index') + '?page=2'
-        )
-        object_list += response.context['page_obj'].object_list
-        second_page_objects_count = len(object_list) - first_page_objects_count
-        first_post = object_list[PostViewsTest.post_list[0].id]
         post_fields = {
-            'text': f'Текст тестового поста #{first_post.id}',
-            'group': PostViewsTest.group,
+            'text': 'Тестовый пост',
+            'group': PostViewsTest.group_1,
             'author': PostViewsTest.author,
         }
-        self.assertEqual(
-            first_page_objects_count,
-            10,
-            ('Paginator возвращает неверное количество'
-             'постов на первой странице index')
-        )
-        self.assertEqual(
-            second_page_objects_count,
-            3,
-            ('Paginator возвращает неверное количество'
-             'постов на второй странице index')
+        self.assertIn(
+            PostViewsTest.test_post,
+            object_list,
+            'Пост не передан в контексте'
         )
         for value, expected in post_fields.items():
             with self.subTest(value=value):
-                self.assertEqual(getattr(first_post, value), expected)
+                self.assertEqual(
+                    getattr(PostViewsTest.test_post, value),
+                    expected,
+                    'Данные поста неверно переданы в шаблон'
+                )
 
     def test_group_list_view_shows_correct_context_and_paginator(self):
         """Проверяем, что group_list view передает правильный
@@ -141,43 +129,39 @@ class PostViewsTest(TestCase):
         response = PostViewsTest.guest_client.get(
             reverse(
                 'posts:group_list',
-                kwargs={'slug': PostViewsTest.group.slug}
+                kwargs={'slug': 'test-slug-2'}
             )
         )
         object_list = response.context['page_obj'].object_list
-        first_page_objects_count = len(object_list)
+        self.assertNotIn(
+            PostViewsTest.test_post,
+            object_list,
+            'Ошибка: пост передан в контекст страницы чужой группы'
+        )
         response = PostViewsTest.guest_client.get(
             reverse(
                 'posts:group_list',
-                kwargs={'slug': PostViewsTest.group.slug}
-            ) + '?page=2'
+                kwargs={'slug': 'test-slug-1'}
+            )
         )
-        object_list += response.context['page_obj']
-        second_page_objects_count = len(object_list) - first_page_objects_count
-        self.assertEqual(
-            first_page_objects_count,
-            10,
-            ('Paginator возвращает неверное количество'
-             'постов на первой странице group_list')
+        object_list = response.context['page_obj'].object_list
+        self.assertIn(
+            PostViewsTest.test_post,
+            object_list,
+            'Ошибка: пост не передан в контекст своей группы'
         )
-        self.assertEqual(
-            second_page_objects_count,
-            3,
-            ('Paginator возвращает неверное количество'
-             'постов на второй странице group_list')
-        )
-        first_post = object_list[PostViewsTest.post_list[0].id]
         post_attr = {
-            'text': f'Текст тестового поста #{first_post.id}',
-            'group': PostViewsTest.group,
+            'text': 'Тестовый пост',
+            'group': PostViewsTest.group_1,
             'author': PostViewsTest.author,
         }
-        # Убрать преобразования set() и найти способ упорядочить список из
-        # паджинатора object_list
-        self.assertEqual(set(object_list), set(PostViewsTest.post_list))
         for value, expected in post_attr.items():
             with self.subTest(value=value):
-                self.assertEqual(getattr(first_post, value), expected)
+                self.assertEqual(
+                    getattr(PostViewsTest.test_post, value),
+                    expected,
+                    'Данные поста неверно переданы в шаблон'
+                )
 
     def test_post_profile_view_shows_correct_context_and_paginator(self):
         """Проверяем, что profile_view передает правильный
@@ -185,51 +169,38 @@ class PostViewsTest(TestCase):
         response = PostViewsTest.guest_client.get(
             reverse(
                 'posts:profile',
-                kwargs={'username': PostViewsTest.author.username}
+                kwargs={'username': 'TestUser'}
             )
         )
         object_list = response.context['page_obj'].object_list
-        first_page_objects_count = len(object_list)
-        response = PostViewsTest.guest_client.get(
-            reverse(
-                'posts:profile',
-                kwargs={'username': PostViewsTest.author.username}
-            ) + '?page=2'
+        self.assertIn(
+            PostViewsTest.test_post,
+            object_list,
+            ('Ошибка: пост не был передан'
+             ' в контексте страницы профиля автора поста')
         )
-        object_list += response.context['page_obj'].object_list
-        second_page_objects_count = len(object_list) - first_page_objects_count
-        self.assertEqual(
-            first_page_objects_count,
-            10,
-            ('Paginator возвращает неверное количество'
-             'постов на первой странице')
-        )
-        self.assertEqual(
-            second_page_objects_count,
-            3,
-            ('Paginator возвращает неверное количество'
-             'постов на второй странице')
-        )
-        first_post = object_list[PostViewsTest.post_list[0].id]
         post_attrs = {
-            'text': f'Текст тестового поста #{first_post.id}',
-            'group': PostViewsTest.group,
+            'text': 'Тестовый пост',
+            'group': PostViewsTest.group_1,
             'author': PostViewsTest.author,
         }
         for value, expected in post_attrs.items():
             with self.subTest(value=value):
-                self.assertEqual(getattr(first_post, value), expected)
+                self.assertEqual(
+                    getattr(PostViewsTest.test_post, value),
+                    expected
+                )
 
     def test_post_detail_view_shows_correct_context(self):
         response = PostViewsTest.guest_client.get(
             reverse(
                 'posts:post_detail',
-                kwargs={'post_id': PostViewsTest.post_list[0].id}
+                kwargs={'post_id': PostViewsTest.test_post.id}
             )
         )
         post_attrs = {
-            'text': f'Текст тестового поста #{PostViewsTest.post_list[0].id}',
-            'group': PostViewsTest.group,
+            'text': 'Тестовый пост',
+            'group': PostViewsTest.group_1,
             'author': PostViewsTest.author,
         }
         post = response.context['post']
@@ -241,26 +212,80 @@ class PostViewsTest(TestCase):
         """Проверяем, что если при создании поста указать
         группу, он появится на главной, странице группы
         и профиле пользователя"""
-        urls = [
-            reverse('posts:index'),
-            reverse(
-                'posts:group_list',
-                kwargs={'slug': 'test-slug'}
+        responses = [
+            PostViewsTest.guest_client.get(
+                reverse('posts:index')
             ),
-            reverse(
-                'posts:profile',
-                kwargs={'username': 'TestUser'}
-            ),
-        ]
-        post = PostViewsTest.post_list[0]
-        if post.group.slug == 'test-slug':
-            for url in urls:
-                response = PostViewsTest.guest_client.get(url)
-                object_list = response.context['page_obj'].object_list
-                response = PostViewsTest.guest_client.get(url + '?page=2')
-                object_list += response.context['page_obj'].object_list
-                self.assertTrue(
-                    post in object_list,
-                    ('Пост с заданной группой не отправлен на'
-                     f'страницу по адресу {url}')
+            PostViewsTest.guest_client.get(
+                reverse(
+                    'posts:group_list',
+                    kwargs={'slug': 'test-slug-1'}
                 )
+            ),
+            PostViewsTest.guest_client.get(
+                reverse(
+                    'posts:profile',
+                    kwargs={'username': 'TestUser'}
+                )
+            )
+        ]
+        for response in responses:
+            object_list = response.context['page_obj'].object_list
+            self.assertIn(
+                PostViewsTest.test_post,
+                object_list,
+                ('Пост с заданной группой не отправлен на'
+                 f'страницу по адресу {response}')
+            )
+
+
+class TestPaginator(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.author = User.objects.create_user(username='TestUser')
+        cls.authorized_client = Client()
+        cls.authorized_client.force_login(cls.author)
+        cls.group = Group.objects.create(
+            title='Первая тестовая группа',
+            slug='test-slug-1',
+        )
+        cls.post_list = []
+        for i in range(1, 14):
+            cls.post_list.append(
+                Post.objects.create(
+                    text=f'Текст тестового поста #{i}',
+                    author=cls.author,
+                    group=cls.group,
+                    pub_date=timezone.now() - i * timezone.timedelta(hours=1)
+                )
+            )
+
+    def test_pagination(self):
+        reversed_urls = [
+            reverse('posts:index'),
+            reverse('posts:group_list', kwargs={'slug': 'test-slug-1'}),
+            reverse('posts:profile', kwargs={'username': 'TestUser'})
+        ]
+        responses_urls = []
+        for url in reversed_urls:
+            responses_urls.append(
+                (PostViewsTest.authorized_client.get(url), url)
+            )
+        for response_url in responses_urls:
+            self.assertEqual(
+                10,
+                len(response_url[0].context['page_obj'].object_list),
+                f'Количество постов не равно 10 на первой странице {url}'
+            )
+        responses_urls = []
+        for url in reversed_urls:
+            responses_urls.append(
+                (PostViewsTest.authorized_client.get(url + '?page=2'), url)
+            )
+        for response_url in responses_urls:
+            self.assertEqual(
+                3,
+                len(response_url[0].context['page_obj'].object_list),
+                f'Количество постов не равно 3 на второй странице {url}'
+            )
