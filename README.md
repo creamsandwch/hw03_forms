@@ -12,6 +12,7 @@
 --созданы статические страницы `/about/author/` и `/about/tech/`.
 ##### - приложение `users`:
 --кастомные шаблоны для url-адресов `auth/login/`, `auth/logout/` и `auth/signup/`;
+
 --страница пользователя `/profile/<username>/`.
 ##### - приложение `posts`:
 -- cтраница просмотра поста `/posts/<post_id>/`.
